@@ -1,0 +1,83 @@
+image: python:3.9-slim
+
+stages:
+  - tasks
+
+  
+services:
+  - name: postgres:15-alpine
+    alias: postgres
+
+
+variables:
+  POSTGRES_DB: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: password
+  POSTGRES_HOST_AUTH_METHOD: trust
+
+  DBNAME: postgres
+  DBHOST: postgres
+  DBPORT: 5432
+  DBUSER: postgres
+  DBPASSWORD: password
+
+  PROJECT_DIR: ${CI_PROJECT_DIR}
+  ANALYSIS_DIR: ${PROJECT_DIR}/analysis
+  SCRIPTS_DIR: ${PROJECT_DIR}/scripts
+  TESTS_DIR: ${PROJECT_DIR}/tests
+  UTILS_DIR: ${PROJECT_DIR}/utils
+  PYPSQL: ${UTILS_DIR}/pypsql.py
+
+  NO_COLOUR: '\033[0m'
+  LIGHT_RED: '\033[1;31m'
+
+
+.setup:
+  before_script:
+    - pip install -r ${PROJECT_DIR}/requirements.txt > /dev/null 2> /dev/null
+
+
+tasks from 3rd to 10th:
+  stage: tasks
+  extends:
+    - .setup
+  script:
+    - echo -e "${LIGHT_RED}>>> Task 3 <<<${NO_COLOUR}"
+    - python3 ${PYPSQL} --file="${SCRIPTS_DIR}/ddl.sql" --cat
+
+    - echo -e "${LIGHT_RED}>>> Task 4-5 <<<${NO_COLOUR}"
+    - python3 ${PYPSQL} --file="${SCRIPTS_DIR}/dml.sql"
+    - echo "Table 'cd.clients' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.clients" --verbose
+    - echo "Table 'cd.shops' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.shops" --verbose
+    - echo "Table 'cd.items' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.items" --verbose
+    - echo "Table 'cd.items_info' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.items_info" --verbose
+    - echo "Table 'cd.offers' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.offers" --verbose
+    - echo "Table 'cd.offers_content' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.offers_content" --verbose
+    - echo "Table 'cd.transactions' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.transactions" --verbose
+    - echo "Table 'cd.transactions_content' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.transactions_content" --verbose
+    - echo "Table 'cd.clients_history' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.clients_history" --verbose
+    - echo "Table 'cd.clients_wallet' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.clients_wallet" --verbose
+    - echo "Table 'cd.clients_wallet_history' contains rows:"
+    - python3 ${PYPSQL} --sql="SELECT * FROM cd.clients_wallet_history" --verbose
+    - SCRIPT_PATH="${SCRIPTS_DIR}/select_count_tables.sql" pytest ${TESTS_DIR}/test_select_count.py
+
+    - echo -e "${LIGHT_RED}>>> Task №6-7 <<<${NO_COLOUR}"
+    - SCRIPT_PATH="${SCRIPTS_DIR}/selects.sql" pytest ${TESTS_DIR}/test_selects.py --verbose
+
+    - echo -e "${LIGHT_RED}>>> Task №9 <<<${NO_COLOUR}"
+    - python3 ${PYPSQL} --file="${SCRIPTS_DIR}/views.sql"
+    - SCRIPT_PATH="${SCRIPTS_DIR}/select_views.sql" pytest ${TESTS_DIR}/test_views.py
+
+    # - echo -e "${LIGHT_RED}>>> Task №10 <<<${NO_COLOUR}"
+    # - python3 ${PYPSQL} --file="${SCRIPTS_DIR}/procedures.sql"
+    # - SCRIPT_PATH="${SCRIPTS_DIR}/select_procedures.sql" pytest ${TESTS_DIR}/test_procedures.py

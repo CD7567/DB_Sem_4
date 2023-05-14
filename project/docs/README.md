@@ -59,9 +59,10 @@
 |   Атрибут  |              Описание             |      Тип     |    Ограничения   |
 | id         | Идентификатор клиента в программе | SERIAL       | PRIMARY KEY      |
 | card_num   | Номер бонусной карты клиента      | VARCHAR(32)  | UNIQUE, NOT NULL |
-| name       | ФИО клиента                       | VARCHAR(256) | NOT NULL         |
+| first_name | Имя клиента                       | VARCHAR(64)  | NOT NULL         |
+| last_name  | Фамилия клиента                   | VARCHAR(64)  | NOT NULL         |
 | phone      | Номер телефона клиента            | VARCHAR(32)  | UNIQUE, NOT NULL |
-| email      | Электронный адрес клиента         | VARCHAR(256) | -                |
+| email      | Электронный адрес клиента         | VARCHAR(128) | -                |
 | age        | Возраст клиента                   | INTEGER      | NOT NULL         |
 | sex        | Пол клиента                       | VARCHAR(32)  | NOT NULL         |
 | birth_date | Дата рождения                     | DATE         | NOT NULL         |
@@ -74,12 +75,14 @@
 
 <div align="center">
 
-|    items    |                      |              |                  |
-|:-----------:|:--------------------:|:------------:|:----------------:|
-|   Атрибут   |       Описание       |      Тип     |    Ограничения   |
-| id          | Идентификатор товара | SERIAL       | PRIMARY KEY      |
-| vendor_code | Артикул товара       | VARCHAR(256) | UNIQUE, NOT NULL |
-| category    | Категория товара     | VARCHAR(256) | NOT NULL         |
+|    items     |                      |              |                  |
+|:------------:|:--------------------:|:------------:|:----------------:|
+|   Атрибут    |       Описание       |      Тип     |    Ограничения   |
+| id           | Идентификатор товара | SERIAL       | PRIMARY KEY      |
+| name         | Имя товара           | VARCHAR(256) | NOT NULL         |
+| manufacturer | Производитель        | VARCHAR(256) | -                |
+| vendor_code  | Артикул товара       | VARCHAR(128) | UNIQUE, NOT NULL |
+| category     | Категория товара     | VARCHAR(128) | NOT NULL         |
 
 </div>
 
