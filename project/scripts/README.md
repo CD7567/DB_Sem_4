@@ -75,3 +75,11 @@
 
 ## `select_views.sql`
 `SELECT` для тестов `VIEW`.
+
+## `triggers.sql`
+Создание триггера для таблицы `cd.transactions` базы данных.
+
+- `TRIGGER` отмены произведенной ранее транзакции.
+
+## `select_triggers.sql`
+`SELECT` для тестов `TRIGGER`.
