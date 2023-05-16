@@ -1,1 +1,402 @@
-Создайте файл со своим решением в корне своего репозитория. Имя файла со скриптом формируется из имени ветки: `<ИМЯ ВЕТКИ>.sql`. Каждая ветка — это отдельное решение
+# ___Домашняя работа №5: Functions, Stored Procedures, Triggers___
+
+## ___Контекст задачи 1___
+
+В схеме `public` имеется таблица с историей криптовалюты.
+
+```postgresql
+CREATE TABLE IF NOT EXISTS coins(
+    dt VARCHAR(16),
+    avg_price NUMERIC,
+    tx_cnt NUMERIC,
+    tx_vol NUMERIC,
+    active_addr_cnt NUMERIC,
+    symbol VARCHAR(8),
+    full_nm VARCHAR(128),
+    open_price NUMERIC,
+    high_price NUMERIC,
+    low_price NUMERIC,
+    close_price NUMERIC,
+    vol NUMERIC,
+    market NUMERIC
+)
+```
+
+Поясним значения хранящиеся в колонках:
+
+* `dt` — дата измерений
+* `avg_price` — средняя цена монеты за торговый день в USD
+* `tx_cnt` — количество транзакций в сети данной монеты
+* `tx_vol` — объем монет переведенных между адресами в сети данной монеты
+* `active_addr_cnt` — количество адресов совершавших а данный день транзации в сети данной монеты
+* `symbol` — сокращенное название монеты
+* `full_nm` — полное название монеты
+* `open_price` — цена монеты в начале торгов данного дня
+* `high_price` — самая высокая цена данной монеты в течение данного торгового дня
+* `low_price` — самая низкая цена данной монеты в течение данного торгового дня
+* `close_price` — цена монеты в конце торгов данного дня
+* `vol` — объем торгов данной монетой на биржах в данный день
+* `market` — капитализация данной монеты в данный день
+
+---
+
+## ___Контекст задачи 2___
+
+В PostgreSQL существует объекты называемые `sequence`. 
+`CREATE SEQUENCE` создаёт генератор последовательности. Эта операция включает создание и инициализацию специальной таблицы _имя_, содержащей одну строку.
+```postgresql
+CREATE [ TEMPORARY | TEMP ] SEQUENCE [ IF NOT EXISTS ] имя [ INCREMENT [ BY ] шаг ]
+    [ MINVALUE мин_значение | NO MINVALUE ] [ MAXVALUE макс_значение | NO MAXVALUE ]
+    [ START [ WITH ] начало ] [ CACHE кеш ] [ [ NO ] CYCLE ]
+    [ OWNED BY { имя_таблицы.имя_столбца | NONE } ]
+```
+**Пример:**
+Создание возрастающей последовательности с именем `serial`, с начальным значением 101:
+```postgresql
+CREATE SEQUENCE serial START 101;
+```
+Получение следующего номера этой последовательности:
+```postgresql
+SELECT nextval('serial');
+
+ nextval
+---------
+     101
+```
+Получение следующего номера этой последовательности:
+```postgresql
+SELECT nextval('serial');
+
+ nextval
+---------
+     102
+```
+
+После создания последовательности работать с ней можно, вызывая функции `nextval`, `currval` и `setval`.
+
+Использование сиквенсов для генерации таблички довольно непростая задача. Давайте в рамках этого задания напишем функцию,
+которая сгенерирует табличку из последовательных чисел.
+
+---
+
+## ___Контекст задачи 3___
+
+Представьте, что вы работает в компании специализирующиеся на высокочастотной торговли. Текущий проект, на котором вы 
+задействованы, предоставляет безопасную платформу для торгов в криптовалюте.
+
+Непосредственно ваша текущая задача это миграция данных из одного хранилища в другое. Системой-источником выбран был 
+[MongoDb](https://medium.com/nuances-of-programming/%D1%80%D1%83%D0%BA%D0%BE%D0%B2%D0%BE%D0%B4%D1%81%D1%82%D0%B2%D0%BE-%D0%BF%D0%BE-mongodb-6e844437b0de),
+а система-приемник у вас Postgres. Архитекторами проекта было решено воспользоваться встроенными механизмами переноса данных, 
+а не писать свой отдельный сервис.
+
+---
+
+## ___Task 1___
+
+Написать функцию `count_non_volatile_days(full_nm TEXT)`, которая считает кол-во дней, когда цена торгов криптомонеты не менялась.
+Если такой криптомонеты не существует, то следует вызвать исключение с текстом: `Crypto currency with name "{full_nm}" is absent in database!`, 
+`{full_nm}` — имя криптомонеты, взятое из аргументов функции. Исключение должно иметь `ERRCODE = '02000'`. Скрипт создания 
+должен быть нечувствителен к уже объявленным функциям. Функция должна быть написана на `plpgsql`.
+
+
+### Ожидаемый формат ответа
+
+Выводить ничего не надо. Скрипт с решением должен содержать __только__ объявление функции.
+
+---
+
+## ___Task 2___
+
+
+Написать функцию `serial_generator(start_val_inc INTEGER, last_val_ex INTEGER)`, которая возвращает таблицу из последовательных
+чисел с шагом `+1`. Скрипт создания должен быть нечувствителен к уже объявленным функциям. 
+
+**Пример**
+```postgresql
+SELECT * FROM serial_generator(10, 12);
+
+ serial_generator
+------------------
+            10
+            11
+```
+
+**Дополнительные условия**
+ * функция должна быть написана на `plpgsql`;
+ * функция генерирует значения начиная с `start_val_inc` до тех пор, пока оно строго меньше `last_val_ex`;
+ * **запрещено** использовать функцию `generate_series`;
+ * самостоятельно изучите документацию как _генерировать_ табличку из функции.
+
+### Ожидаемый формат ответа
+
+Выводить ничего не надо. Скрипт с решением должен содержать __только__ объявление функции.
+
+---
+
+## ___Task 3___
+
+В Postgres имеется 3 таблицы, в которые делается вставка:
+ * `auctioneer`;
+ * `attachment`;
+ * `bet`.
+
+Данные в источнике хранятся в коллекции `bettings`, примеры записей из этой коллекции:
+```js
+// запись № X:
+{
+    "auctioneer": {
+        "firstname": "john",
+        "lastname": "doe",
+        "nickname": "mr.notknown",
+        "email": "john.doe@email.com"
+    },
+    "attachment": {
+        "filename": "key.token1",
+        "location": {
+            "datacenter": "AWS_EU",
+            "localname": "iD1234sdv23r23rtfwv"
+        }
+    },
+    "bet": {
+        "volume": 0.00001,
+        "ts": 1672520400
+    }
+}
+
+// запись № (X+1):
+{
+    "auctioneer": {
+        "firstname": "john",
+        "lastname": "doe",
+        "nickname": "mr.notknown",
+        "email": "john.doe@email.com"
+    },
+    "attachment": {
+        "filename": "key.token2",
+        "location": {
+            "datacenter": "AWS_US",
+            "localname": "iDasd@-asfasf23@3s"
+        }
+    },
+    "bet": {
+        "volume": 0.00085,
+        "ts": 1676928960
+    }
+}
+```
+
+**Небольшое объяснение**
+
+Пользователи платформы (информация о пользователе — таблица `auctioneer`) делают ставки на аукционе
+(таблица `bet`). Из соображений безопасности во время произведения ставки пользователь 
+должен приложить файл, полученный во время регистрации на аукцион (таблица `attachment`).
+
+**Технические ограничения**
+
+Внутренний механизм миграции:
+1. делает вставку БД по одному документу из коллекции;
+2. не имеет прав на вставку в таблицы `auctioneer`, `attachment`, `bet`;
+3. может вставлять документы "как есть" в виде строки.
+
+В силу этих ограничений вставка происходит черех view `v_auction_payload`.
+
+### Ожидаемый формат ответа
+
+Ваше решение должно быть в виде дополнения к скрипту:
+```postgresql
+CREATE TABLE auctioneer (
+    event_id   INTEGER,
+    firstname  TEXT,
+    lastname   TEXT,
+    nickname   TEXT,
+    email      TEXT
+);
+CREATE TABLE attachment (
+    event_id   INTEGER,
+    filename   TEXT,
+    datacenter TEXT,
+    localname  TEXT
+);
+CREATE TABLE bet (
+    event_id   INTEGER,
+    volume     NUMERIC,
+    ts         TIMESTAMP
+);
+
+CREATE OR REPLACE FUNCTION auctioneer_to_json(event_id INTEGER)
+    RETURNS TEXT
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    firstname_ TEXT;
+    lastname_  TEXT;
+    nickname_  TEXT;
+    email_     TEXT;
+BEGIN
+    SELECT
+        firstname, lastname, nickname, email
+    INTO
+        firstname_, lastname_, nickname_, email_
+    FROM
+        auctioneer
+    WHERE
+        auctioneer.event_id = $1;
+    RETURN format(
+        '{"firstname": %I, "lastname": %I, "nickname": %I, "email": %I}',
+        firstname_, lastname_, nickname_, email_
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION attachment_to_json(event_id INTEGER)
+    RETURNS TEXT
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    filename_   TEXT;
+    datacenter_ TEXT;
+    localname_  TEXT;
+BEGIN
+    SELECT
+        filename, datacenter, localname
+    INTO
+        filename_, datacenter_, localname_
+    FROM
+        attachment
+    WHERE
+        attachment.event_id = $1;
+    RETURN format(
+        '{"filename": %I, location": {"datacenter": %I, "localname": %I}}',
+        filename_, datacenter_, localname_
+    );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION bet_to_json(event_id INTEGER)
+    RETURNS TEXT
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    volume_     NUMERIC;
+    ts_         TIMESTAMP;
+BEGIN
+    SELECT
+        volume, ts
+    INTO
+        volume_, ts_
+    FROM
+        bet
+    WHERE
+        bet.event_id = $1;
+    RETURN format(
+        '{"volume": %s, "ts": %s}',
+        volume_, EXTRACT(EPOCH FROM ts_)::BIGINT
+    );
+END;
+$$;
+
+
+CREATE OR REPLACE VIEW v_auction_payload(payload) AS
+    SELECT
+        format(
+            '{"auctioneer": %s, "attachment": %s, "bet": %s}',
+            auctioneer_to_json(bet.event_id),
+            attachment_to_json(bet.event_id),
+            bet_to_json(bet.event_id)
+        )
+    FROM
+        auctioneer
+    JOIN
+        attachment
+        ON
+            auctioneer.event_id = attachment.event_id
+    JOIN
+        bet
+        ON
+            attachment.event_id = bet.event_id;
+```
+
+### Пример
+Ваше дополнение к скрипту должно позволить получить следующий эффект
+```postgresql
+INSERT INTO v_auction_payload(payload) VALUES (
+'{
+    "auctioneer": {
+        "firstname": "john",
+        "lastname": "doe",
+        "nickname": "mr.notknown",
+        "email": "john.doe@email.com"
+    },
+    "attachment": {
+        "filename": "key.token1",
+        "location": {
+            "datacenter": "AWS_EU",
+            "localname": "iD1234sdv23r23rtfwv"
+        }
+    },
+    "bet": {
+        "volume": 0.00001,
+        "ts": 1672520400
+    }
+}');
+INSERT INTO v_auction_payload(payload) VALUES (
+'{
+    "auctioneer": {
+        "firstname": "john",
+        "lastname": "doe",
+        "nickname": "mr.notknown",
+        "email": "john.doe@email.com"
+    },
+    "attachment": {
+        "filename": "key.token2",
+        "location": {
+            "datacenter": "AWS_US",
+            "localname": "iDasd@-asfasf23@3s"
+        }
+    },
+    "bet": {
+        "volume": 0.00085,
+        "ts": 1676928960
+    }
+}');
+```
+```postgresql
+SELECT * FROM auctioneer;
+
+--
+
+1,john,doe,mr.notknown,john.doe@email.com
+2,john,doe,mr.notknown,john.doe@email.com
+```
+```postgresql
+SELECT * FROM attachment;
+
+---
+
+1,key.token1,AWS_EU,iD1234sdv23r23rtfwv
+2,key.token2,AWS_US,iDasd@-asfasf23@3s
+```
+```postgresql
+SELECT * FROM bet;
+
+---
+
+1,0.00001,2022-12-31 21:00:00.000000
+2,0.00085,2023-02-20 21:36:00.000000
+```
+```postgresql
+SELECT * FROM v_auction_payload;
+
+---
+
+"{""auctioneer"": {""firstname"": john, ""lastname"": doe, ""nickname"": ""mr.notknown"", ""email"": ""john.doe@email.com""}, ""attachment"": {""filename"": ""key.token1"", location"": {""datacenter"": ""AWS_EU"", ""localname"": ""iD1234sdv23r23rtfwv""}}, ""bet"": {""volume"": 0.00001, ""ts"": 1672520400}}"
+"{""auctioneer"": {""firstname"": john, ""lastname"": doe, ""nickname"": ""mr.notknown"", ""email"": ""john.doe@email.com""}, ""attachment"": {""filename"": ""key.token2"", location"": {""datacenter"": ""AWS_US"", ""localname"": ""iDasd@-asfasf23@3s""}}, ""bet"": {""volume"": 0.00085, ""ts"": 1676928960}}"
+```
+
+### Подсказки
+ * [Ознакомтесь с работой с JSON в Postgres](https://www.postgresql.org/docs/9.3/functions-json.html)
+ * Для нумерации событий стоит воспользоваться с ранее изученным объектом из предыдущего задания.
+ * Нумерация должна начинаться с 1.
+ * Для получения текущего момента времени можно воспользоваться функцией `now()`.
+
+---
